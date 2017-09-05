@@ -1,0 +1,24 @@
+{
+  "name": "@groundwater/virsh",
+  "version": "1.0.0",
+  "description": "VIR Scripting Shell",
+  "main": "index",
+  "bin": {
+    "virsh": "./virsh.js"
+  },
+  "scripts": {
+    "test": "jison virsh-lang.yacc && ts-node test.ts",
+    "prepare": "tsc",
+    "virsh": "ts-node virsh"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^8.0.26",
+    "jison": "^0.4.18",
+    "tap": "^10.7.2",
+    "ts-node": "^3.3.0",
+    "typescript": "^2.5.2"
+  }
+}
