@@ -2,6 +2,12 @@
 
 > An experiment, everything might change, never use this
 
+## Try It
+
+```
+npx virsh
+```
+
 ## Goals
 
 1. Scriptable and Bash-like for simple executions
