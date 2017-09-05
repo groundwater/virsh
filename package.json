@@ -1,6 +1,6 @@
 {
   "name": "virsh",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "VIR Scripting Shell",
   "main": "index",
   "bin": {
