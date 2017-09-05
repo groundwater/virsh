@@ -1,5 +1,5 @@
 {
-  "name": "@groundwater/virsh",
+  "name": "virsh",
   "version": "1.0.0",
   "description": "VIR Scripting Shell",
   "main": "index",
