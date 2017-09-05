@@ -1,6 +1,6 @@
 # VIR Shell
 
-> An experiment, everything might change, never use this
+> An experiment, slow, everything might change, never use this
 
 ## Try It
 
