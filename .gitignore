@@ -3,3 +3,4 @@ world.json
 var
 tmp
 *.js
+build

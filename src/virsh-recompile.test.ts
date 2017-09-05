@@ -3,7 +3,7 @@ import { program } from "./ast"
 import { compileAll } from "./recompile";
 
 const {test} = require('tap')
-const grammar = require('./virsh-lang')
+const grammar = require('../virsh-lang')
 
 function pass(s:TemplateStringsArray) {
     const [line] = s

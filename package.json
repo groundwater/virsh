@@ -4,11 +4,11 @@
   "description": "VIR Scripting Shell",
   "main": "index",
   "bin": {
-    "virsh": "./virsh.js"
+    "virsh": "./build/virsh.js"
   },
   "scripts": {
-    "test": "jison virsh-lang.yacc && ts-node test.ts",
-    "prepare": "tsc",
+    "test": "jison virsh-lang.yacc && ts-node src/test.ts",
+    "prepare": "tsc --outDir build src",
     "virsh": "ts-node virsh"
   },
   "keywords": [],

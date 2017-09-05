@@ -2,7 +2,7 @@ import { program } from './ast';
 import { makeDefaultGlobal } from './global';
 import { Applied, compileEval, LValue, RValue, Scope } from './eval';
 
-const grammar = require('./virsh-lang')
+const grammar = require('../virsh-lang')
 
 export class EvalMachine {
     public global: Scope

@@ -3,7 +3,7 @@ import { inspect } from 'util'
 
 import { program } from './ast'
 
-const grammar = require('./virsh-lang')
+const grammar = require('../virsh-lang')
 
 export type Async<T> = T | Promise<T>
 export type opts = {[name:string]:  any}
