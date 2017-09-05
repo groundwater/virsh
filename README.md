@@ -82,15 +82,20 @@ y = "Hello"
 
 Templates can use values from the current scope:
 
-    ```
-    name = "Amber"
-    "Hello {name}"
-    ```
+```
+name = "Amber"
+"Hello {name}"
+```
 
 ## Functions
 
-Currently, you cannot define functions.
-You can call functions injected into your scope.
+There are two types of functions:
+
+1. JavaScript native functions
+2. _virsh_ defined functions
+
+Native functions must be defined in JavaScript, and injected into your virsh environment.
+A number of native functions are injected via the _global_/default scope, e.g. `list`, `range`, `print`.
 
 1. Call with a single arg.
 
@@ -99,23 +104,18 @@ You can call functions injected into your scope.
     [1, 2, 3, ..., 10]
     ```
 2. You cannot invoke a function with zero args.
-   You should instead return a calculated value.
+    This is currently a _TODO_ item.
+    However you _can_ pass it a dummy arg.
 3. Multiple args
 
     ```
     $ range 10 11
     [10, 11]
     ```
-## Generators
-
-
 
 ## Iterations
 
-For loops are not first-class constructs. They're just an remix of two primitives:
-
-1. function evaluation
-2. lazy/unbound function arguments
+For loops can iterate over lists.
 
 ```
 for i <- 1..10 {
@@ -123,13 +123,15 @@ for i <- 1..10 {
 }
 ```
 
-The `{ i }` block is not bound, nor evaluated when it's passed as an argument to `for`.
+Under the hood, this is actually a function call to `for` with two arguments `i <- 1..10`, and `{ i }`.
+The `{ i }` block is not lexically bound, nor evaluated when it's passed as an argument to `for`.
 The invoked function is responsible for both binding the block to a `Scope`, and evaluating the body.
+This is used to implement most language features.
 
 ## Conditionals
 
 Lazy evaluation gives you branching without special constructs or callbacks.
-If statements will evaluate one, or another arguments depending on the conditional.
+If statements will evaluate arguments depending on the conditional.
 
 - Everything looks normal
 
@@ -161,9 +163,24 @@ If statements will evaluate one, or another arguments depending on the condition
     if cond "True" "False"
     ```
 
+Under the hood, the `else` keyword is meaningless other than it changes the presedence of how the expression is evaluted.
+
+- Without the `else` block this would be evaluated as:
+
+    ```
+    if  cond   "True"   if   "ifelse"   "else"
+    if (cond) ("True") (if) ("ifelse") ("else")
+    ```
+- With the `else` block, we get what we expect:
+
+    ```
+    if  cond   "True"  else  if "ifelse" "else"
+    if (cond) ("True") else (if "ifelse" "else")
+    ```
+
 ## User Defined Functions
 
-Define user-defined functions with `func`
+Define user-defined functions with `func`.
 
 ```
 z = 1
