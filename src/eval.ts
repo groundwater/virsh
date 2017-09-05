@@ -67,7 +67,17 @@ export function RValue(getter: (() => Async<Applied>) | Async<Applied>): RValue 
         get() { return get() },
     }
 }
-export type Applied = List | Str | Num | Bool | Scope | Func | Undef
+export class Signal {
+    type: 'signal' = 'signal'
+    constructor(public kind: SignalType) {}
+    reify() {
+        return `Signal: ` + SignalType[this.kind]
+    }
+}
+export enum SignalType {
+    StopGenerator = 1
+}
+export type Applied = List | Str | Num | Bool | Scope | Func | Undef | Signal
 export class Num {
     type: 'num' = 'num'
     constructor(public value: Async<number>) { }
@@ -109,7 +119,7 @@ export class List {
     }
 }
 export class Scope {
-    constructor(private parent?: Scope) { }
+    constructor(public parent?: Scope) { }
     type: 'scope' = 'scope'
     value : {[name:string]: LValue} = {}
     get(name: string): LValue {
@@ -120,7 +130,7 @@ export class Scope {
             return out
         }
     }
-    private _get(name:string): LValue | undefined {
+    public _get(name:string): LValue | undefined {
         return this.value[name] || (this.parent && this.parent._get(name))
     }
     async reify(): Promise<{[name:string]: any}> {
@@ -134,8 +144,8 @@ export class Scope {
 export class Func {
     type: 'func' = 'func'
     constructor(public value: (scope: Scope, ...args:((scope: Scope) => Async<Applied>)[]) => Async<Applied>) { }
-    async reify() {
-        return function(){}
+    async reify(): Promise<any> {
+        return '[Function]'
     }
 }
 export class Undef {
@@ -264,24 +274,31 @@ export async function compileEval(ast: program, scope: Scope): Promise<LValue | 
         return RValue(new List(list))
     }
     case 'take': {
-        const scp = new Scope(scope)
-        const ivar = scp.get(ast.lhs.data)
+        // grab the list from current scope
         const range = await compileEval(ast.rhs, scope)
-        const vals = await range.get()
+        const list = await range.get()
 
-        if (vals.type !== 'list') throw new Error(`Type ${vals.type} Not Iterable`)
+        if (list.type !== 'list') throw new Error(`Type ${list.type} Not Iterable`)
 
-        // TODO: make take return a funciton, that when applied, yields successive values
-        //       i.e. make this a generator
-        return RValue(new Func(async (scope, iter) => {
-            let last: Async<Applied> = Undefined
+        // make a copy of the list for safety
+        // I don't really know if this is necessary, but I'd like to avoid the list mutating mid-iteration
+        const listCopy = [...list.value]
 
-            for(const val of vals.value) {
-                await ivar.set(await val.get())
-                last = await iter(scp)
+        // Return a callable generator
+        // However instead of yielding successive values, the generator applies a generated scope to the body it receives
+        return RValue(new Func(async (_scope, iter) => {
+            const scope = new Scope(_scope)
+            const val = listCopy.shift()
+
+            if (val === undefined) {
+                return new Signal(SignalType.StopGenerator)
             }
 
-            return last
+            // save generated value to scope
+            await scope.get(ast.lhs.data).set(val.get())
+
+            // call body
+            return iter(scope)
         }))
     }
     case 'sstring':
@@ -405,6 +422,22 @@ export async function compileEval(ast: program, scope: Scope): Promise<LValue | 
         const s2 = await (await (await compileEval(content, scope)).get()).reify()
 
         return RValue(new Str(s0 + s1 + s2))
+    }
+    case 'mod': {
+        const $lhs = await compileEval(ast.lhs, scope)
+        const $rhs = await compileEval(ast.rhs, scope)
+
+        const lhs = await $lhs.get()
+        const rhs = await $rhs.get()
+
+        const l = await lhs.reify()
+        const r = await rhs.reify()
+
+        if (typeof l !== 'number' || typeof r !== 'number') {
+            throw new Error(`Not a numvber`)
+        }
+
+        return RValue(new Num(l % r))
     }
     default:
         console.error('AST', ast)

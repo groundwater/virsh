@@ -20,6 +20,7 @@ npx virsh
 1. Error handling is terrible. Good luck. It's a combination of uncacught parser-errors, and my own errors thrown with very little context.
 2. The grammar is overly-permissive. Some allowable stuff might be disallowed in future.
 3. I want to add automatic semicolon insertion (ASI) as a pre-processing step.
+4. Add currying, and auto-invocation e.g. `ls = func { 12 }; ls #12`
 
 ## Simple Expressions
 
@@ -105,6 +106,10 @@ You can call functions injected into your scope.
     $ range 10 11
     [10, 11]
     ```
+## Generators
+
+
+
 ## Iterations
 
 For loops are not first-class constructs. They're just an remix of two primitives:
@@ -161,15 +166,23 @@ If statements will evaluate one, or another arguments depending on the condition
 Define user-defined functions with `func`
 
 ```
-y = func { x + 1 }
+z = 1
+y = func { x + z }
 ```
 
 Call them with
 
 ```
-y {x:1}
+y {x:2}
+# 3
 ```
 
+Under the hood, this is also a "hack". The defined function body is unbound and unevalated when the function is created.
+The body is evaluated when invoked later, but with a new scope.
+
+The new scope is of a mix of the lexical scope when defined, and the dynamic scope when invoked.
+Calling `y {x:1}` causes any lexically bound `x` values to be shadowed by the dynamically bound `x` at call time.
+Since `z` is not shadowed, it resolves to `1`.
 
 ## Horrors
 

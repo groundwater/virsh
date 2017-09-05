@@ -16,6 +16,11 @@ export interface block {
     type: 'block'
     sequence: program[]
 }
+export interface mod {
+    type: 'mod'
+    lhs: program
+    rhs: program
+}
 export interface call {
     type: 'call'
     lhs: program
@@ -165,4 +170,5 @@ export type program = reference
     | range
     | template
     | filling
+    | mod
     ;

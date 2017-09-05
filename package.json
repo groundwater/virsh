@@ -9,7 +9,7 @@
   "scripts": {
     "test": "jison virsh-lang.yacc && ts-node src/test.ts",
     "prepare": "tsc --outDir build",
-    "virsh": "ts-node virsh"
+    "virsh": "ts-node src/virsh"
   },
   "keywords": [],
   "author": "",

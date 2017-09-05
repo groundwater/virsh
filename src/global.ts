@@ -15,12 +15,28 @@ export function makeDefaultGlobal(): Scope {
         }
     }))
 
+    out.get('print').set(new Func(async (scope, ...args) => {
+        for(const arg of args) {
+            console.log(await (await arg(scope)).reify())
+        }
+        return Undefined
+    }))
+
     out.get('for').set(new Func(async (scope, fn, iter) => {
-       const fnc = await fn(scope)
+        const fnc = await fn(scope)
 
-       if (fnc.type !== 'func') throw new Error(`Cannot Apply for`)
+        if (fnc.type !== 'func') throw new Error(`Cannot Apply for`)
 
-       return fnc.value(scope, iter)
+        var next: Applied
+          , last: Applied
+
+        while((next = await fnc.value(scope, iter)).type !== 'signal') {
+            // we want to keep track of valid values
+            // but we never want to return the stop signal
+            last = next
+        }
+
+        return last! || Undefined
     }))
 
     out.get('list').set(new Func(async (scope, ...args) => {

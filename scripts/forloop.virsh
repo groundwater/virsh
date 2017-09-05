@@ -1,0 +1,5 @@
+# A simple loop
+
+for i <- 1..10 {
+    print "Item {i}"
+}

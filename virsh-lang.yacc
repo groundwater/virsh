@@ -25,6 +25,7 @@ for                      return 'FOR';
 [=][>]                   return 'UNAPPLY';
 [=][=]                   return 'EEQ';
 [!][=]                   return 'NEQ';
+[%]                      return 'MOD';
 [$]                      return 'DOLLAR';
 [+]                      return 'PLUS';
 [-]                      return 'SUBTRACT';
@@ -268,7 +269,26 @@ keyval
 
 keyvalNext: objNext | obj;
 
-objNext :add | addNext;
+objNext : mod | modNext;
+
+mod
+    : modNext MOD modNext {
+        $$ = {
+            type: 'mod',
+            lhs: $1,
+            rhs: $3,
+        }
+    }
+    | mod MOD modNext {
+        $$ = {
+            type: 'mod',
+            lhs: $1,
+            rhs: $3,
+        }
+    }
+    ;
+
+modNext: add | addNext;
 
 add
     : addNext PLUS addNext {
