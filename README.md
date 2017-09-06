@@ -8,6 +8,10 @@
 npx virsh
 ```
 
+## Examples
+
+- [fizzbuzz](./scripts/fizzbuzz.virsh)
+
 ## Goals
 
 1. Scriptable and Bash-like for simple executions

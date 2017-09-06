@@ -1,7 +1,9 @@
+(<any>Symbol).asyncIterator = Symbol.asyncIterator || Symbol.for("Symbol.asyncIterator")
+
 import * as assert from 'assert'
 import { inspect } from 'util'
 
-import { program } from './ast'
+import { program, call, reference, voidtype } from './ast'
 
 const grammar = require('../virsh-lang')
 
@@ -113,9 +115,16 @@ export class Bool {
 }
 export class List {
     type: 'list' = 'list'
-    constructor(public value: Array<RValue>) { }
-    reify(): Async<Array<any>> {
-        return Promise.all(this.value.map(async (val) => await (await val.get()).reify()))
+    constructor(public value: Iterable<RValue> | AsyncIterable<RValue>) { }
+    async reify(): Promise<Array<any>> {
+        const value = []
+        for await(const next of this.value) {
+            value.push(next)
+        }
+        return Promise.all(value.map(async (val) => await (await val.get()).reify()))
+    }
+    async *[Symbol.asyncIterator]() {
+        yield * this.value
     }
 }
 export class Scope {
@@ -141,9 +150,16 @@ export class Scope {
         return out
     }
 }
+
+export type FuncArg = (scope: Scope) => Async<Applied>
+export type FuncCallback = (scope: Scope, ...args:FuncArg[]) => Async<Applied>
 export class Func {
     type: 'func' = 'func'
-    constructor(public value: (scope: Scope, ...args:((scope: Scope) => Async<Applied>)[]) => Async<Applied>) { }
+    constructor(
+        public value: FuncCallback,
+        public nargs: number = 1, // number of args before auto-invoked
+        public argsv: string[] = [],
+    ) { }
     async reify(): Promise<any> {
         return '[Function]'
     }
@@ -173,16 +189,23 @@ export class Path {
     }
 }
 
-export async function compileEval(ast: program, scope: Scope): Promise<LValue | RValue> {
+export async function compileEval(ast: program, scope: Scope, asRvalue: boolean = true): Promise<LValue | RValue> {
     switch(ast.type) {
     case 'int': {
         return Val(new Num(ast.data))
     }
     case 'reference': {
-        return scope.get(ast.data)
+        const lval = await scope.get(ast.data)
+        const val = await lval.get()
+
+        if (asRvalue && val.type === 'func' && val.nargs === 0) {
+            return RValue(await val.value(scope))
+        } else {
+            return lval
+        }
     }
     case 'assign': {
-        const lhs = await compileEval(ast.lhs, scope)
+        const lhs = await compileEval(ast.lhs, scope, false)
         if (lhs.type !== 'lvalue') throw new Error(`Invalid LHS Assignment`)
         const rhs = await compileEval(ast.rhs, scope)
         lhs.set(rhs.get())
@@ -282,20 +305,20 @@ export async function compileEval(ast: program, scope: Scope): Promise<LValue | 
 
         // make a copy of the list for safety
         // I don't really know if this is necessary, but I'd like to avoid the list mutating mid-iteration
-        const listCopy = [...list.value]
+        const listCopy = list[Symbol.asyncIterator]()
 
         // Return a callable generator
         // However instead of yielding successive values, the generator applies a generated scope to the body it receives
         return RValue(new Func(async (_scope, iter) => {
             const scope = new Scope(_scope)
-            const val = listCopy.shift()
+            const {done, value} = await listCopy.next()
 
-            if (val === undefined) {
+            if (done) {
                 return new Signal(SignalType.StopGenerator)
             }
 
             // save generated value to scope
-            await scope.get(ast.lhs.data).set(val.get())
+            await scope.get(ast.lhs.data).set(value.get())
 
             // call body
             return iter(scope)
@@ -359,7 +382,9 @@ export async function compileEval(ast: program, scope: Scope): Promise<LValue | 
 
         switch(ast.op) {
         case '!=': return RValue(new Bool(l != r))
-        case '==': return RValue(new Bool(l == r))
+        case '==': {
+            return RValue(new Bool(l == r))
+        }
         case '<': {
             if (lhs.type !== 'num' && rhs.type !== 'num') {
                 throw new Error(`Can only compare (<) Num Type`)
@@ -398,7 +423,12 @@ export async function compileEval(ast: program, scope: Scope): Promise<LValue | 
         case 'list': {
             const index = await rhs.reify()
             if (typeof index !== 'number') throw new Error(`List index must be number`)
-            return lhs.value[index]
+
+            var i = 0
+            for await(const next of lhs) {
+                if (i++ === index) return next
+            }
+            return RValue(Undefined)
         }
         case 'scope': {
             const index = await rhs.reify()
@@ -439,8 +469,43 @@ export async function compileEval(ast: program, scope: Scope): Promise<LValue | 
 
         return RValue(new Num(l % r))
     }
+    case 'unapply': {
+        const {lhs, rhs} = ast
+        const $lhs = compileUnapplyArgs(lhs)
+        const func = new Func(async (_scope, ...args) => {
+            const sscope = new Scope(scope)
+
+            var i = 0
+            for(const str of $lhs) {
+                const arg = await args[i++](_scope)
+                await sscope.get(str).set(arg)
+            }
+
+            return (await compileEval(rhs, sscope)).get()
+        }, $lhs.length, $lhs)
+        return RValue(func)
+    }
     default:
         console.error('AST', ast)
         throw new Error(`Unexpected type ${ast.type}`)
+    }
+}
+
+function compileUnapplyArgs(args: call | reference | voidtype): string[] {
+    switch(args.type) {
+    case 'call': {
+        const params = [args.lhs, ...args.args]
+        return params.map(compileUnapplyArgs).reduce((out, next) => {
+            return out.concat(next)
+        }, [])
+    }
+    case 'reference': {
+        return [args.data]
+    }
+    case 'void': {
+        return []
+    }
+    default:
+        throw new Error(`Inappropriate Arg Type`)
     }
 }

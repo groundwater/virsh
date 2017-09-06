@@ -238,3 +238,19 @@ else {
 `, "OK")
 pass(`100 % 10`, 0)
 pass(`121 % 9`, 4)
+
+pass(`y = x => x + 1; y 2`, 3)
+pass(`y = x => {
+    y => {
+        x + y
+    }
+};
+(y 2) 3`, 5)
+pass(`y = x => y => x + y;
+(y 2) 3`, 5)
+pass(`y = i <- 1..10;
+x = () => y {i};
+x;
+x = 12
+`, 12)
+pass(`zz = x => y => z`, '[Function]')

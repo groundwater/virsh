@@ -20,6 +20,7 @@ Yes                      return 'FALSE';
 else                     return 'ELSE';
 if                       return 'IF';
 for                      return 'FOR';
+[&]                      return 'REF';
 [-][>]                   return 'LOOK';
 [<][-]                   return 'TAKE';
 [=][>]                   return 'UNAPPLY';
@@ -55,12 +56,16 @@ for                      return 'FOR';
 %% /* language grammar */
 
 done
-    : all EOF {
+    : block EOF {
         return $1
     }
+    | blockNext EOF {
+        return {
+            type: 'block',
+            sequence: [$1]
+        }
+    }
     ;
-
-all : block | blockNext;
 
 list
     : listNext COMMA {
@@ -136,7 +141,18 @@ assign
     }
     ;
 
-assignNext : unapply | unapplyNext;
+assignNext : ref | refNext;
+
+ref
+    : REF refNext {
+        $$ = {
+            type: 'ref',
+            value: $2
+        }
+    }
+    ;
+
+refNext: unapply | unapplyNext;
 
 unapply
     : unapplyNext UNAPPLY unapplyNext {
@@ -146,7 +162,7 @@ unapply
             rhs: $3,
         }
     }
-    | unapply UNAPPLY unapplyNext {
+    | unapplyNext UNAPPLY unapply {
         $$ = {
             type: 'unapply',
             lhs: $1,
@@ -444,6 +460,11 @@ deferred
             type: 'range',
             from: parseInt($1),
             stop: parseInt($3),
+        }
+    }
+    | OPAREN CPAREN {
+        $$ = {
+            type: 'void'
         }
     }
     ;

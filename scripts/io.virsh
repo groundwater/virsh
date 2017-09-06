@@ -1,0 +1,11 @@
+write ">| ";
+
+for i <- (io.stdin) {
+    x = i;
+    if x == 'ls' {
+        for i <- (fs.ls ".") {
+            print i
+        }
+    };
+    write ">| "
+}

@@ -1,19 +1,20 @@
 #!/usr/bin/env node
+import { makeUnsafeScope } from './global';
 
 import {EvalMachine} from './index'
 import {createInterface} from 'readline'
-import * as fs from 'fs'
+import * as fs from 'fs';
 
 async function main() {
     const [file] = process.argv.slice(2)
 
     if (file) {
         const script = fs.readFileSync(file, 'utf-8')
-        const vm = new EvalMachine()
+        const vm = new EvalMachine(makeUnsafeScope())
         const out = await vm.eval(script)
     } else {
 
-        const vm = new EvalMachine()
+        const vm = new EvalMachine(makeUnsafeScope())
         const rl = createInterface({
             input: process.stdin,
             output: process.stdout,

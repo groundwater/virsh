@@ -78,8 +78,11 @@ export interface range {
 }
 export interface unapply {
     type: 'unapply'
-    lhs: lhs
+    lhs: lhs | call | voidtype
     rhs: program
+}
+export interface voidtype {
+    type: 'void'
 }
 export interface take {
     type: 'take'
@@ -171,4 +174,5 @@ export type program = reference
     | template
     | filling
     | mod
+    | voidtype
     ;

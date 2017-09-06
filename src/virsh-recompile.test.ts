@@ -70,7 +70,7 @@ const templates = [
     pass`a b->c`,
     pass`a.c b->c`,
 
-    fail`()`,
+    pass`()`,
     pass`(a)`,
     pass`(a->b)->c`,
 
@@ -104,8 +104,6 @@ const templates = [
     pass`1`,
     pass`1.1`,
     pass`1`,
-
-    fail`()`
 ]
 
 function recompile(s:TemplateStringsArray) {

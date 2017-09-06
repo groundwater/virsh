@@ -5,11 +5,7 @@ import { Applied, compileEval, LValue, RValue, Scope } from './eval';
 const grammar = require('../virsh-lang')
 
 export class EvalMachine {
-    public global: Scope
-
-    constructor() {
-        this.global = makeDefaultGlobal()
-    }
+     constructor(public global: Scope = makeDefaultGlobal()) {}
 
     eval(script: string): Promise<any> {
         return this.reify(this.evalAST(this.parse(script)))

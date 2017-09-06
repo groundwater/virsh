@@ -1,8 +1,75 @@
-import { Bool, Func, List, Num, RValue, Scope, Str, Undefined, Async, Applied } from './eval';
+import { Applied, Async, Bool, Func, List, LValue, Num, RValue, Scope, Str, Undef, Undefined } from './eval';
 import { list } from './ast';
+import { readFile, readdir } from 'fs';
 
+export function makeUnsafeScope(): Scope {
+    const out: Scope = makeDefaultGlobal()
+
+    const io = new Scope()
+
+    io.get('stdin').set(new List(async function*(): AsyncIterableIterator<RValue> {
+            const data: string[] = []
+            var awaits: () => any
+            process.stdin.on('data', (datum) => {
+                data.push(datum.toString())
+                if (awaits) awaits()
+            })
+            while(true) {
+                var next
+                while(next = data.shift()) {
+                    yield RValue(new Str(next.trim()))
+                }
+                await new Promise(pass => awaits = pass)
+            }
+        }()
+    ))
+
+    const fs = new Scope()
+
+    fs.get('read').set(new Func(async (scope, fname) => {
+        const name = await (await fname(scope)).reify()
+        return new Promise<Applied>((pass, fail) => {
+            readFile(name, 'utf-8', (err, data) => {
+                if (err) return fail(err)
+
+                pass(new Str(data))
+            })
+        })
+    }))
+
+    fs.get('ls').set(new Func(async (scope, fname) => {
+        return new Promise<Applied>((pass, fail) => {
+            readdir('.', (err, list) => {
+                if (err) fail(err)
+                pass(new List(list.map(list => RValue(new Str(list)))))
+            })
+        })
+    }))
+
+    fs.get('lines').set(new Func(async (scope, fname) => {
+        const name = await (await fname(scope)).reify()
+        return new Promise<Applied>((pass, fail) => {
+            readFile(name, 'utf-8', (err, data) => {
+                if (err) return fail(err)
+
+                pass(new List(data.trim().split(/\n/).map(line => {
+                    return RValue(new Str(line))
+                })))
+            })
+        })
+    }))
+
+    out.get('fs').set(fs)
+    out.get('io').set(io)
+
+    return out
+}
 export function makeDefaultGlobal(): Scope {
     const out: Scope = new Scope()
+
+    out.get('test').set(new Func(async (scope, ...args) => {
+        return new Num(1)
+    }, 0))
 
     out.get('if').set(new Func(async (_scope, cond, ifTrue, ifFalse) => {
         const scope = new Scope(_scope)
@@ -13,6 +80,14 @@ export function makeDefaultGlobal(): Scope {
         } else {
             return ifFalse ? ifFalse(scope) : Undefined
         }
+    }))
+
+    out.get('write').set(new Func(async (scope, ...args) => {
+        for(const arg of args) {
+            var out = await (await arg(scope)).reify()
+            process.stdout.write(String(out))
+        }
+        return Undefined
     }))
 
     out.get('print').set(new Func(async (scope, ...args) => {
@@ -49,7 +124,10 @@ export function makeDefaultGlobal(): Scope {
 
         if (list.type !== 'list') throw new Error(`Not a list`)
 
-        return list.value[0].get() || Undefined
+        for await(const next of list) {
+            return next.get()
+        }
+        return Undefined
     }))
 
     out.get('with').set(new Func(async (scope, _newScope, _body) => {
