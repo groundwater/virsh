@@ -1,1 +1,11 @@
-z = () => {}
+# Zero argument functions
+
+i = 0;
+z = () => "Item {i++}";
+for i <- 1..10 {
+    print z
+};
+
+# Single argument
+add = x y => y + x;
+print (add (add 1 2) 12)
